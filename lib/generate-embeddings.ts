@@ -20,7 +20,7 @@ import yargs from 'yargs'
 import { Octokit } from '@octokit/core'
 import { restEndpointMethods, RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
 
-const MyOctokit = Octokit.plugin(restEndpointMethods);
+const MyOctokit = Octokit.plugin(restEndpointMethods)
 const octokit = new MyOctokit({
   auth: process.env.GH_PAT,
 })
@@ -204,15 +204,15 @@ async function fetchGitHubDirectoryContents(
       owner,
       repo,
       path,
-    });
+    })
 
-    const contents = response.data;
+    const contents = response.data
 
     if (Array.isArray(contents)) {
       return contents
         .map((item) => item.download_url)
         .filter((url) => url !== null && (url.endsWith('.mdx') || url.endsWith('.md')))
-        .map((url) => url as string);
+        .map((url) => url as string)
     } else {
       throw new Error('Invalid GitHub API response')
     }
@@ -317,7 +317,11 @@ abstract class BaseEmbeddingSource {
   meta?: Meta
   sections?: Section[]
 
-  constructor(public source: string, public path: string, public parentPath?: string) {}
+  constructor(
+    public source: string,
+    public path: string,
+    public parentPath?: string
+  ) {}
 
   abstract load(): Promise<{
     checksum: string
@@ -329,7 +333,11 @@ abstract class BaseEmbeddingSource {
 class MarkdownEmbeddingSource extends BaseEmbeddingSource {
   type: 'markdown' = 'markdown'
 
-  constructor(source: string, public filePath: string, public parentFilePath?: string) {
+  constructor(
+    source: string,
+    public filePath: string,
+    public parentFilePath?: string
+  ) {
     const path = filePath.replace(/^pages/, '').replace(/\.mdx?$/, '')
     const parentPath = parentFilePath?.replace(/^pages/, '').replace(/\.mdx?$/, '')
 
