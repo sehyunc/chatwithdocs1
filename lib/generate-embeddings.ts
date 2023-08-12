@@ -159,7 +159,6 @@ function processMdxForSearch(content: string): ProcessedMdx {
   const sectionTrees = splitTreeBy(mdTree, (node) => node.type === 'heading')
 
   const slugger = new GithubSlugger()
-  
 
   const sections = sectionTrees.map((tree) => {
     const [firstNode] = tree.children
@@ -195,7 +194,7 @@ async function walk(dir: string, parentPath?: string): Promise<WalkEntry[]> {
     immediateFiles.map(async (file) => {
       const path = join(dir, file)
       const stats = await stat(path)
-      
+
       // If the file is a directory, recursively walk into it
       if (stats.isDirectory()) {
         // Keep track of document hierarchy (if this dir has corresponding doc file)
@@ -206,7 +205,7 @@ async function walk(dir: string, parentPath?: string): Promise<WalkEntry[]> {
           // If the directory has a corresponding .mdx file, set it as the parentPath
           immediateFiles.includes(docPath) ? join(dirname(path), docPath) : parentPath
         )
-      } 
+      }
       // If the file is a regular file, return its path and parentPath
       else if (stats.isFile()) {
         return [
@@ -215,7 +214,7 @@ async function walk(dir: string, parentPath?: string): Promise<WalkEntry[]> {
             parentPath,
           },
         ]
-      } 
+      }
       // If the file is neither a directory nor a regular file, return an empty array
       else {
         return []
@@ -238,7 +237,11 @@ abstract class BaseEmbeddingSource {
   meta?: Meta
   sections?: Section[]
 
-  constructor(public source: string, public path: string, public parentPath?: string) {}
+  constructor(
+    public source: string,
+    public path: string,
+    public parentPath?: string
+  ) {}
 
   abstract load(): Promise<{
     checksum: string
@@ -250,7 +253,11 @@ abstract class BaseEmbeddingSource {
 class MarkdownEmbeddingSource extends BaseEmbeddingSource {
   type: 'markdown' = 'markdown'
 
-  constructor(source: string, public filePath: string, public parentFilePath?: string) {
+  constructor(
+    source: string,
+    public filePath: string,
+    public parentFilePath?: string
+  ) {
     const path = filePath.replace(/^pages/, '').replace(/\.mdx?$/, '')
     const parentPath = parentFilePath?.replace(/^pages/, '').replace(/\.mdx?$/, '')
 
@@ -331,7 +338,7 @@ async function generateEmbeddings() {
     const { type, source, path, parentPath } = embeddingSource
 
     try {
-  // Loop through each embedding source. For each source, we extract its type, source, path, and parentPath.
+      // Loop through each embedding source. For each source, we extract its type, source, path, and parentPath.
       // TODO: fetch Github .md files that are in embeddingSources
       // TODO: maybe fetch .md files in parallel before this
       const { checksum, meta, sections } = await embeddingSource.load()
@@ -382,7 +389,7 @@ async function generateEmbeddings() {
         continue
       }
 
-  // If the page exists, we remove old page sections and their embeddings.
+      // If the page exists, we remove old page sections and their embeddings.
       if (existingPage) {
         if (!shouldRefresh) {
           console.log(
@@ -438,7 +445,7 @@ async function generateEmbeddings() {
 
       console.log(`[${path}] Adding ${sections.length} page sections (with embeddings)`)
       // This for loop iterates over each section of the current page.
-      // For each section, it generates an embedding using OpenAI's API, 
+      // For each section, it generates an embedding using OpenAI's API,
       // then inserts the section along with its embedding into the database.
       for (const { slug, heading, content } of sections) {
         // OpenAI recommends replacing newlines with spaces for best results (specific to embeddings)

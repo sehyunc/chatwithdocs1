@@ -3,9 +3,6 @@
 # IDE - VSCode
 .vscode/*
 
-# IDE - IntelliJ
-.idea/*
-
 # dependencies
 /node_modules
 /.pnp
