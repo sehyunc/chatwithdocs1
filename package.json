@@ -21,6 +21,8 @@
     "sqlKeywordCase": "lower"
   },
   "dependencies": {
+    "@octokit/core": "^5.0.0",
+    "@octokit/plugin-rest-endpoint-methods": "^9.0.0",
     "@radix-ui/react-dialog": "^1.0.3",
     "@radix-ui/react-label": "^2.0.1",
     "@supabase/supabase-js": "^2.13.0",

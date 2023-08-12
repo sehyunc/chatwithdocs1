@@ -17,6 +17,13 @@ import { u } from 'unist-builder'
 import { filter } from 'unist-util-filter'
 import { inspect } from 'util'
 import yargs from 'yargs'
+import { Octokit } from '@octokit/core'
+import { restEndpointMethods, RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
+
+const MyOctokit = Octokit.plugin(restEndpointMethods);
+const octokit = new MyOctokit({
+  auth: process.env.GH_PAT,
+})
 
 dotenv.config()
 
@@ -159,7 +166,6 @@ function processMdxForSearch(content: string): ProcessedMdx {
   const sectionTrees = splitTreeBy(mdTree, (node) => node.type === 'heading')
 
   const slugger = new GithubSlugger()
-  
 
   const sections = sectionTrees.map((tree) => {
     const [firstNode] = tree.children
@@ -186,6 +192,79 @@ type WalkEntry = {
   parentPath?: string
 }
 
+async function fetchGitHubDirectoryContents(
+  owner: string,
+  repo: string,
+  path: string
+): Promise<string[]> {
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`
+
+  try {
+    const response = await octokit.rest.repos.getContent({
+      owner,
+      repo,
+      path,
+    });
+
+    const contents = response.data;
+
+    if (Array.isArray(contents)) {
+      return contents
+        .map((item) => item.download_url)
+        .filter((url) => url !== null && (url.endsWith('.mdx') || url.endsWith('.md')))
+        .map((url) => url as string);
+    } else {
+      throw new Error('Invalid GitHub API response')
+    }
+  } catch (error) {
+    console.error('Error fetching GitHub directory contents:', error)
+    return []
+  }
+}
+
+async function walkGitHubDir(
+  owner: string,
+  repo: string,
+  path: string,
+  parentPath?: string
+): Promise<WalkEntry[]> {
+  const fileLinks = await fetchGitHubDirectoryContents(owner, repo, path)
+
+  const recursiveFiles = await Promise.all(
+    fileLinks.map(async (fileLink) => {
+      // Split the file link into its path parts
+      const pathParts: string[] = fileLink.split('/')
+      // Extract the file name from the last part of the path
+      const fileName = pathParts[pathParts.length - 1]
+      // Join the remaining parts back together to get the file path
+      const filePath = pathParts.slice(0, -1).join('/')
+
+      const pseudoPath = filePath !== '' ? `${filePath}/${fileName}` : fileName
+      const pseudoParentPath = parentPath !== undefined ? `${parentPath}/${fileName}` : undefined
+
+      // If the fileLink ends with /, it means the link points to a subdirectory.
+      if (fileLink.endsWith('/')) {
+        return walkGitHubDir(owner, repo, filePath, pseudoParentPath)
+      } else {
+        return [
+          {
+            path: pseudoPath,
+            parentPath: pseudoParentPath,
+          },
+        ]
+      }
+    })
+  )
+
+  const flattenedFiles = recursiveFiles.reduce(
+    (all, folderContents) => all.concat(folderContents),
+    []
+  )
+
+  return flattenedFiles.sort((a, b) => a.path.localeCompare(b.path))
+}
+
+// Leaving this here in case we want to add upload directory support in the future
 async function walk(dir: string, parentPath?: string): Promise<WalkEntry[]> {
   // Read all files in the current directory
   const immediateFiles = await readdir(dir)
@@ -195,7 +274,7 @@ async function walk(dir: string, parentPath?: string): Promise<WalkEntry[]> {
     immediateFiles.map(async (file) => {
       const path = join(dir, file)
       const stats = await stat(path)
-      
+
       // If the file is a directory, recursively walk into it
       if (stats.isDirectory()) {
         // Keep track of document hierarchy (if this dir has corresponding doc file)
@@ -206,7 +285,7 @@ async function walk(dir: string, parentPath?: string): Promise<WalkEntry[]> {
           // If the directory has a corresponding .mdx file, set it as the parentPath
           immediateFiles.includes(docPath) ? join(dirname(path), docPath) : parentPath
         )
-      } 
+      }
       // If the file is a regular file, return its path and parentPath
       else if (stats.isFile()) {
         return [
@@ -215,7 +294,7 @@ async function walk(dir: string, parentPath?: string): Promise<WalkEntry[]> {
             parentPath,
           },
         ]
-      } 
+      }
       // If the file is neither a directory nor a regular file, return an empty array
       else {
         return []
@@ -305,20 +384,22 @@ async function generateEmbeddings() {
       },
     }
   )
+  // Seeded data for testing
+  const owner = 'AleoHQ'
+  const repo = 'welcome'
+  const githubDirPath = 'documentation'
 
   // Generate EmbeddingSources by walking through the 'pages' directory
   // Filter out non-MDX files and ignored files
   // Create a new MarkdownEmbeddingSource for each valid file
-  // TODO: create EmbeddingSourceArray of links to .md files in Github repo
-  const embeddingSources: EmbeddingSource[] = [
-    ...(await walk('pages'))
-      .filter(({ path }) => /\.mdx?$/.test(path))
-      .filter(({ path }) => !ignoredFiles.includes(path))
-      .map((entry) => new MarkdownEmbeddingSource('guide', entry.path)),
-  ]
+  const fileLinks = await walkGitHubDir(owner, repo, githubDirPath)
+
+  const embeddingSources: EmbeddingSource[] = fileLinks
+    .filter(({ path }) => !ignoredFiles.includes(path))
+    .map((entry) => new MarkdownEmbeddingSource('guide', entry.path))
 
   console.log(`Discovered ${embeddingSources.length} pages`)
-
+  console.log(embeddingSources.map(({ path }) => path))
   // If the refresh flag is not set, we only check for new or changed pages.
   // If the refresh flag is set, we re-generate all pages regardless of changes.
   if (!shouldRefresh) {
@@ -331,7 +412,7 @@ async function generateEmbeddings() {
     const { type, source, path, parentPath } = embeddingSource
 
     try {
-  // Loop through each embedding source. For each source, we extract its type, source, path, and parentPath.
+      // Loop through each embedding source. For each source, we extract its type, source, path, and parentPath.
       // TODO: fetch Github .md files that are in embeddingSources
       // TODO: maybe fetch .md files in parallel before this
       const { checksum, meta, sections } = await embeddingSource.load()
@@ -382,7 +463,7 @@ async function generateEmbeddings() {
         continue
       }
 
-  // If the page exists, we remove old page sections and their embeddings.
+      // If the page exists, we remove old page sections and their embeddings.
       if (existingPage) {
         if (!shouldRefresh) {
           console.log(
@@ -438,7 +519,7 @@ async function generateEmbeddings() {
 
       console.log(`[${path}] Adding ${sections.length} page sections (with embeddings)`)
       // This for loop iterates over each section of the current page.
-      // For each section, it generates an embedding using OpenAI's API, 
+      // For each section, it generates an embedding using OpenAI's API,
       // then inserts the section along with its embedding into the database.
       for (const { slug, heading, content } of sections) {
         // OpenAI recommends replacing newlines with spaces for best results (specific to embeddings)
