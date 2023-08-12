@@ -9,7 +9,8 @@
     "lint": "next lint",
     "format": "prettier --write \"./**/*.{js,jsx,ts,tsx,css,md,json}\"",
     "embeddings": "tsx lib/generate-embeddings.ts",
-    "embeddings:refresh": "tsx lib/generate-embeddings.ts --refresh"
+    "embeddings:refresh": "tsx lib/generate-embeddings.ts --refresh",
+    "prepare": "husky install"
   },
   "prettier": {
     "trailingComma": "es5",
@@ -64,9 +65,14 @@
     "@types/yargs": "^17.0.24",
     "autoprefixer": "^10.4.14",
     "dotenv": "^16.0.3",
+    "husky": "^8.0.3",
+    "lint-staged": "^13.2.3",
     "postcss": "^8.4.21",
-    "prettier": "^2.8.7",
+    "prettier": "3.0.1",
     "tailwindcss": "^3.2.7",
     "tsx": "^3.12.6"
+  },
+  "lint-staged": {
+    "**/*": "prettier --write --ignore-unknown"
   }
 }
