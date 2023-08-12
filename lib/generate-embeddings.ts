@@ -159,6 +159,7 @@ function processMdxForSearch(content: string): ProcessedMdx {
   const sectionTrees = splitTreeBy(mdTree, (node) => node.type === 'heading')
 
   const slugger = new GithubSlugger()
+  
 
   const sections = sectionTrees.map((tree) => {
     const [firstNode] = tree.children
@@ -186,38 +187,49 @@ type WalkEntry = {
 }
 
 async function walk(dir: string, parentPath?: string): Promise<WalkEntry[]> {
+  // Read all files in the current directory
   const immediateFiles = await readdir(dir)
 
+  // Map over each file in the directory
   const recursiveFiles = await Promise.all(
     immediateFiles.map(async (file) => {
       const path = join(dir, file)
       const stats = await stat(path)
+      
+      // If the file is a directory, recursively walk into it
       if (stats.isDirectory()) {
         // Keep track of document hierarchy (if this dir has corresponding doc file)
         const docPath = `${basename(path)}.mdx`
 
         return walk(
           path,
+          // If the directory has a corresponding .mdx file, set it as the parentPath
           immediateFiles.includes(docPath) ? join(dirname(path), docPath) : parentPath
         )
-      } else if (stats.isFile()) {
+      } 
+      // If the file is a regular file, return its path and parentPath
+      else if (stats.isFile()) {
         return [
           {
             path: path,
             parentPath,
           },
         ]
-      } else {
+      } 
+      // If the file is neither a directory nor a regular file, return an empty array
+      else {
         return []
       }
     })
   )
 
+  // Flatten the array of files
   const flattenedFiles = recursiveFiles.reduce(
     (all, folderContents) => all.concat(folderContents),
     []
   )
 
+  // Sort the files by their paths and return the array
   return flattenedFiles.sort((a, b) => a.path.localeCompare(b.path))
 }
 
@@ -294,6 +306,10 @@ async function generateEmbeddings() {
     }
   )
 
+  // Generate EmbeddingSources by walking through the 'pages' directory
+  // Filter out non-MDX files and ignored files
+  // Create a new MarkdownEmbeddingSource for each valid file
+  // TODO: create EmbeddingSourceArray of links to .md files in Github repo
   const embeddingSources: EmbeddingSource[] = [
     ...(await walk('pages'))
       .filter(({ path }) => /\.mdx?$/.test(path))
@@ -303,6 +319,8 @@ async function generateEmbeddings() {
 
   console.log(`Discovered ${embeddingSources.length} pages`)
 
+  // If the refresh flag is not set, we only check for new or changed pages.
+  // If the refresh flag is set, we re-generate all pages regardless of changes.
   if (!shouldRefresh) {
     console.log('Checking which pages are new or have changed')
   } else {
@@ -313,6 +331,9 @@ async function generateEmbeddings() {
     const { type, source, path, parentPath } = embeddingSource
 
     try {
+  // Loop through each embedding source. For each source, we extract its type, source, path, and parentPath.
+      // TODO: fetch Github .md files that are in embeddingSources
+      // TODO: maybe fetch .md files in parallel before this
       const { checksum, meta, sections } = await embeddingSource.load()
 
       // Check for existing page in DB and compare checksums
@@ -361,6 +382,7 @@ async function generateEmbeddings() {
         continue
       }
 
+  // If the page exists, we remove old page sections and their embeddings.
       if (existingPage) {
         if (!shouldRefresh) {
           console.log(
@@ -415,6 +437,9 @@ async function generateEmbeddings() {
       }
 
       console.log(`[${path}] Adding ${sections.length} page sections (with embeddings)`)
+      // This for loop iterates over each section of the current page.
+      // For each section, it generates an embedding using OpenAI's API, 
+      // then inserts the section along with its embedding into the database.
       for (const { slug, heading, content } of sections) {
         // OpenAI recommends replacing newlines with spaces for best results (specific to embeddings)
         const input = content.replace(/\n/g, ' ')
@@ -438,6 +463,7 @@ async function generateEmbeddings() {
 
           const { error: insertPageSectionError, data: pageSection } = await supabaseClient
             .from('nods_page_section')
+            // TODO: add a column for what project the file belongs to
             .insert({
               page_id: page.id,
               slug,
