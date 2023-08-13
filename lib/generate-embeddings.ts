@@ -21,9 +21,7 @@ import { Octokit } from '@octokit/core'
 import { restEndpointMethods, RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
 
 const MyOctokit = Octokit.plugin(restEndpointMethods)
-const octokit = new MyOctokit({
-  auth: process.env.GH_PAT,
-})
+const octokit = new MyOctokit()
 
 dotenv.config()
 
@@ -192,13 +190,7 @@ type WalkEntry = {
   parentPath?: string
 }
 
-async function fetchGitHubDirectoryContents(
-  owner: string,
-  repo: string,
-  path: string
-): Promise<string[]> {
-  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`
-
+async function fetchGitHubDirectoryContents(owner: string, repo: string, path: string) {
   try {
     const response = await octokit.rest.repos.getContent({
       owner,
@@ -210,9 +202,6 @@ async function fetchGitHubDirectoryContents(
 
     if (Array.isArray(contents)) {
       return contents
-        .map((item) => item.download_url)
-        .filter((url) => url !== null && (url.endsWith('.mdx') || url.endsWith('.md')))
-        .map((url) => url as string)
     } else {
       throw new Error('Invalid GitHub API response')
     }
@@ -232,24 +221,16 @@ async function walkGitHubDir(
 
   const recursiveFiles = await Promise.all(
     fileLinks.map(async (fileLink) => {
-      // Split the file link into its path parts
-      const pathParts: string[] = fileLink.split('/')
-      // Extract the file name from the last part of the path
-      const fileName = pathParts[pathParts.length - 1]
-      // Join the remaining parts back together to get the file path
-      const filePath = pathParts.slice(0, -1).join('/')
-
-      const pseudoPath = filePath !== '' ? `${filePath}/${fileName}` : fileName
-      const pseudoParentPath = parentPath !== undefined ? `${parentPath}/${fileName}` : undefined
-
-      // If the fileLink ends with /, it means the link points to a subdirectory.
-      if (fileLink.endsWith('/')) {
-        return walkGitHubDir(owner, repo, filePath, pseudoParentPath)
-      } else {
+      if (fileLink.type === 'dir') {
+        return walkGitHubDir(owner, repo, fileLink.path, path)
+      } else if (
+        fileLink.type === 'file' &&
+        (fileLink.name.endsWith('.mdx') || fileLink.name.endsWith('.md'))
+      ) {
         return [
           {
-            path: pseudoPath,
-            parentPath: pseudoParentPath,
+            path: fileLink.download_url,
+            parentPath: parentPath,
           },
         ]
       }
@@ -345,18 +326,28 @@ class MarkdownEmbeddingSource extends BaseEmbeddingSource {
   }
 
   async load() {
-    const contents = await readFile(this.filePath, 'utf8')
+    try {
+      const response = await fetch(this.filePath)
+      const fileContent = await response.text()
 
-    const { checksum, meta, sections } = processMdxForSearch(contents)
+      const { checksum, meta, sections } = processMdxForSearch(fileContent)
 
-    this.checksum = checksum
-    this.meta = meta
-    this.sections = sections
+      this.checksum = checksum
+      this.meta = meta
+      this.sections = sections
 
-    return {
-      checksum,
-      meta,
-      sections,
+      return {
+        checksum,
+        meta,
+        sections,
+      }
+    } catch (error) {
+      console.error(`Error fetching file contents for this path: ${this.filePath}`, error)
+      return {
+        checksum: '',
+        meta: undefined,
+        sections: [],
+      }
     }
   }
 }
