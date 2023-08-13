@@ -232,8 +232,9 @@ async function walkGitHubDir(
             path: fileLink.download_url,
             parentPath: parentPath,
           },
-        ]
+        ] as WalkEntry[]
       }
+      return []
     })
   )
 
@@ -392,6 +393,7 @@ async function generateEmbeddings() {
   // Filter out non-MDX files and ignored files
   // Create a new MarkdownEmbeddingSource for each valid file
   const fileLinks = await walkGitHubDir(owner, repo, githubDirPath)
+  console.log('🚀 ~ generateEmbeddings ~ fileLinks:', fileLinks)
 
   const embeddingSources: EmbeddingSource[] = fileLinks
     .filter(({ path }) => !ignoredFiles.includes(path))
