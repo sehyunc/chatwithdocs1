@@ -19,6 +19,7 @@ import { inspect } from 'util'
 import yargs from 'yargs'
 import { Octokit } from '@octokit/core'
 import { restEndpointMethods, RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
+import { parseGitHubURL } from '@/lib/utils'
 
 const MyOctokit = Octokit.plugin(restEndpointMethods)
 const octokit = new MyOctokit()
@@ -331,6 +332,7 @@ class MarkdownEmbeddingSource extends BaseEmbeddingSource {
       const response = await fetch(this.filePath)
       const fileContent = await response.text()
 
+      //TODO: handle unsanitzied markdown gracefully
       const { checksum, meta, sections } = processMdxForSearch(fileContent)
 
       this.checksum = checksum
@@ -385,14 +387,14 @@ async function generateEmbeddings() {
     }
   )
   // Seeded data for testing
-  const owner = 'AleoHQ'
-  const repo = 'welcome'
-  const githubDirPath = 'documentation'
+  const parsedGhUrl = parseGitHubURL('https://github.com/AleoHQ/welcome/tree/master/documentation')
+
+  const { owner, repo, path } = parsedGhUrl ? parsedGhUrl : { owner: '', repo: '', path: '' }
 
   // Generate EmbeddingSources by walking through the 'pages' directory
   // Filter out non-MDX files and ignored files
   // Create a new MarkdownEmbeddingSource for each valid file
-  const fileLinks = await walkGitHubDir(owner, repo, githubDirPath)
+  const fileLinks = await walkGitHubDir(owner, repo, path)
   console.log('🚀 ~ generateEmbeddings ~ fileLinks:', fileLinks)
 
   const embeddingSources: EmbeddingSource[] = fileLinks
