@@ -2,7 +2,6 @@ import { createClient } from '@supabase/supabase-js'
 import { createHash } from 'crypto'
 import dotenv from 'dotenv'
 import { ObjectExpression } from 'estree'
-import { readdir, readFile, stat } from 'fs/promises'
 import GithubSlugger from 'github-slugger'
 import { Content, Root } from 'mdast'
 import { fromMarkdown } from 'mdast-util-from-markdown'
@@ -12,13 +11,12 @@ import { toString } from 'mdast-util-to-string'
 import { mdxjs } from 'micromark-extension-mdxjs'
 import 'openai'
 import { Configuration, OpenAIApi } from 'openai'
-import { basename, dirname, join } from 'path'
 import { u } from 'unist-builder'
 import { filter } from 'unist-util-filter'
 import { inspect } from 'util'
 import yargs from 'yargs'
 import { Octokit } from '@octokit/core'
-import { restEndpointMethods, RestEndpointMethodTypes } from '@octokit/plugin-rest-endpoint-methods'
+import { restEndpointMethods } from '@octokit/plugin-rest-endpoint-methods'
 import { parseGitHubURL } from '@/lib/utils'
 
 const MyOctokit = Octokit.plugin(restEndpointMethods)
@@ -247,54 +245,6 @@ async function walkGitHubDir(
   return flattenedFiles.sort((a, b) => a.path.localeCompare(b.path))
 }
 
-// Leaving this here in case we want to add upload directory support in the future
-async function walk(dir: string, parentPath?: string): Promise<WalkEntry[]> {
-  // Read all files in the current directory
-  const immediateFiles = await readdir(dir)
-
-  // Map over each file in the directory
-  const recursiveFiles = await Promise.all(
-    immediateFiles.map(async (file) => {
-      const path = join(dir, file)
-      const stats = await stat(path)
-
-      // If the file is a directory, recursively walk into it
-      if (stats.isDirectory()) {
-        // Keep track of document hierarchy (if this dir has corresponding doc file)
-        const docPath = `${basename(path)}.mdx`
-
-        return walk(
-          path,
-          // If the directory has a corresponding .mdx file, set it as the parentPath
-          immediateFiles.includes(docPath) ? join(dirname(path), docPath) : parentPath
-        )
-      }
-      // If the file is a regular file, return its path and parentPath
-      else if (stats.isFile()) {
-        return [
-          {
-            path: path,
-            parentPath,
-          },
-        ]
-      }
-      // If the file is neither a directory nor a regular file, return an empty array
-      else {
-        return []
-      }
-    })
-  )
-
-  // Flatten the array of files
-  const flattenedFiles = recursiveFiles.reduce(
-    (all, folderContents) => all.concat(folderContents),
-    []
-  )
-
-  // Sort the files by their paths and return the array
-  return flattenedFiles.sort((a, b) => a.path.localeCompare(b.path))
-}
-
 abstract class BaseEmbeddingSource {
   checksum?: string
   meta?: Meta
@@ -389,7 +339,11 @@ async function generateEmbeddings() {
   // Seeded data for testing
   const parsedGhUrl = parseGitHubURL('https://github.com/AleoHQ/welcome/tree/master/documentation')
 
-  const { owner, repo, path } = parsedGhUrl ? parsedGhUrl : { owner: '', repo: '', path: '' }
+  if (!parsedGhUrl) {
+    return
+  }
+
+  const { owner, repo, path } = parsedGhUrl
 
   // Generate EmbeddingSources by walking through the 'pages' directory
   // Filter out non-MDX files and ignored files
