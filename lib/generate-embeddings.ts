@@ -337,7 +337,7 @@ async function generateEmbeddings() {
     }
   )
   // Seeded data for testing
-  const parsedGhUrl = parseGitHubURL('https://github.com/AleoHQ/welcome/tree/master/documentation')
+  const parsedGhUrl = parseGitHubURL('https://github.com/pmndrs/zustand/tree/main/docs')
 
   if (!parsedGhUrl) {
     return
@@ -349,7 +349,6 @@ async function generateEmbeddings() {
   // Filter out non-MDX files and ignored files
   // Create a new MarkdownEmbeddingSource for each valid file
   const fileLinks = await walkGitHubDir(owner, repo, path)
-  console.log('🚀 ~ generateEmbeddings ~ fileLinks:', fileLinks)
 
   const embeddingSources: EmbeddingSource[] = fileLinks
     .filter(({ path }) => !ignoredFiles.includes(path))
@@ -364,6 +363,32 @@ async function generateEmbeddings() {
   } else {
     console.log('Refresh flag set, re-generating all pages')
   }
+
+  let project_id: number
+
+  // Query the Supabase database for a project with the given name
+  const { error: fetchProjectError, data: projectPage } = await supabaseClient
+    .from('projects')
+    .select('id, name')
+    .filter('name', 'eq', `${owner}/${repo}/${path}`)
+    .limit(1)
+    .maybeSingle()
+
+  // If there was an error fetching the project or no project was found, create a new project
+  if (fetchProjectError || !projectPage) {
+    const { error: createProjectError } = await supabaseClient.from('projects').insert({
+      name: `${owner}/${repo}/${path}`,
+    })
+    if (createProjectError || !projectPage) {
+      throw createProjectError
+    }
+    project_id = projectPage.id
+  }
+
+  // Assign the project ID to the variable and log it to the console
+  project_id = projectPage.id
+
+  console.log('Assigning to project id: ', project_id)
 
   for (const embeddingSource of embeddingSources) {
     const { type, source, path, parentPath } = embeddingSource
@@ -461,6 +486,7 @@ async function generateEmbeddings() {
             source,
             meta,
             parent_page_id: parentPage?.id,
+            project_id,
           },
           { onConflict: 'path' }
         )

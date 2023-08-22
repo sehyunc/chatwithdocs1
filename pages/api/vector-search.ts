@@ -48,6 +48,9 @@ export default async function handler(req: NextRequest) {
     if (!query) {
       throw new UserError('Missing query in request data')
     }
+    if (!req.body) {
+      throw new UserError('Missing project url')
+    }
 
     const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
 
@@ -87,6 +90,7 @@ export default async function handler(req: NextRequest) {
         match_threshold: 0.78,
         match_count: 10,
         min_content_length: 50,
+        project_id_input: 1,
       }
     )
 
@@ -113,12 +117,12 @@ export default async function handler(req: NextRequest) {
 
     const prompt = codeBlock`
       ${oneLine`
-        You are a very enthusiastic Supabase representative who loves
-        to help people! Given the following sections from the Supabase
+        You are a very enthusiastic developer who loves
+        to help people! Given the following sections from the various
         documentation, answer the question using only that information,
         outputted in markdown format. If you are unsure and the answer
         is not explicitly written in the documentation, say
-        "Sorry, I don't know how to help with that."
+        "Try again"
       `}
 
       Context sections:
