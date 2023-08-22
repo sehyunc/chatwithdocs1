@@ -1,15 +1,16 @@
-import SupabaseProvider from './supabase-provider'
 import { PropsWithChildren } from 'react'
-import 'styles/globals.css'
+import './globals.css'
+import SupabaseProvider from './supabase-provider'
 
-export default function RootLayout({
-  // Layouts must accept a children prop.
-  // This will be populated with nested layouts or pages
-  children,
-}: PropsWithChildren) {
+export const metadata = {
+  title: 'Chat with Docs',
+  description: 'Finally, you can chat with your docs.',
+}
+
+export default function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang="en">
-      <body className="bg-black loading">
+      <body className="">
         <SupabaseProvider>
           <main id="skip" className="min-h-[calc(100dvh-4rem)] md:min-h[calc(100dvh-5rem)]">
             {children}
