@@ -13,10 +13,8 @@ export async function getSession() {
     const {
       data: { session },
     } = await supabase.auth.getSession()
-    console.log('-> supabase.auth.getSession()', supabase.auth.getSession())
     return session
   } catch (error) {
-    console.error('Error:', error)
     return null
   }
 }
