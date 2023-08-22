@@ -7,6 +7,8 @@ export const metadata = {
   description: 'Finally, you can chat with your docs.',
 }
 
+export const dynamic = 'force-dynamic'
+
 export default function RootLayout({ children }: PropsWithChildren) {
   return (
     <html lang="en">
