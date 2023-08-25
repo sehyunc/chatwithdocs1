@@ -12,7 +12,8 @@ export default function AuthUI() {
       <Auth
         supabaseClient={supabase}
         providers={['github']}
-        redirectTo={`${getURL()}auth/callback`}
+        //TODO: change to getURL() to handle distinguish prod and dev
+        redirectTo={'http://localhost:3000/auth/callback'}
         magicLink={true}
         appearance={{
           theme: ThemeSupa,
