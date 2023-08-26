@@ -1,34 +1,34 @@
 -- Enable pgvector extension
 create extension if not exists vector with schema public;
 
--- Create tables 
+-- Create tables
 create table "public"."projects" (
-  id bigserial primary key,
-  name text not null unique
+                                     id bigserial primary key,
+                                     name text not null unique
 );
 alter table "public"."projects" enable row level security;
 
 create table "public"."nods_page" (
-  id bigserial primary key,
-  parent_page_id bigint references public.nods_page,
-  path text not null unique,
-  checksum text,
-  meta jsonb,
-  type text,
-  source text,
-  project_id bigint not null references public.projects on delete cascade
+                                      id bigserial primary key,
+                                      parent_page_id bigint references public.nods_page,
+                                      path text not null unique,
+                                      checksum text,
+                                      meta jsonb,
+                                      type text,
+                                      source text,
+                                      project_id bigint not null references public.projects on delete cascade
 
 );
 alter table "public"."nods_page" enable row level security;
 
 create table "public"."nods_page_section" (
-  id bigserial primary key,
-  page_id bigint not null references public.nods_page on delete cascade,
-  content text,
-  token_count int,
-  embedding vector(1536),
-  slug text,
-  heading text
+                                              id bigserial primary key,
+                                              page_id bigint not null references public.nods_page on delete cascade,
+                                              content text,
+                                              token_count int,
+                                              embedding vector(1536),
+                                              slug text,
+                                              heading text
 );
 alter table "public"."nods_page_section" enable row level security;
 
@@ -39,9 +39,9 @@ language plpgsql
 as $$
 #variable_conflict use_variable
 begin
-  return query
-  -- Selecting required fields from the nods_page_section table
-  select
+return query
+-- Selecting required fields from the nods_page_section table
+select
     nods_page_section.id,
     nods_page_section.page_id,
     nods_page_section.slug,
@@ -49,30 +49,26 @@ begin
     nods_page_section.content,
     -- Calculating similarity between the input embedding and the stored embedding
     (nods_page_section.embedding <#> embedding) * -1 as similarity
-  from nods_page_section
+from nods_page_section
+  -- JOIN with nods_page to filter by project_id
+  JOIN nods_page ON nods_page_section.page_id = nods_page.id
+  WHERE nods_page.project_id = _project_id
 
-  -- We only care about sections that have a useful amount of content
-  where length(nods_page_section.content) >= min_content_length
+     -- We only care about sections that have a useful amount of content
+and length(nods_page_section.content) >= min_content_length
 
   -- Filtering out sections with similarity less than the match threshold
   -- The dot product is negative because of a Postgres limitation, so we negate it
   and (nods_page_section.embedding <#> embedding) * -1 > match_threshold
-
-  -- We only care about pages that are in the same project
-  and nods_page_section.page_id in (
-    select id
-    from nods_page
-    where project_id = 1
-  )
 
   -- OpenAI embeddings are normalized to length 1, so
   -- cosine similarity and dot product will produce the same results.
   -- Using dot product which can be computed slightly faster.
   --
   -- For the different syntaxes, see https://github.com/pgvector/pgvector
-  order by nods_page_section.embedding <#> embedding
-  
-  limit match_count;
+order by nods_page_section.embedding <#> embedding
+
+    limit match_count;
 end;
 $$;
 
@@ -82,15 +78,15 @@ language sql
 as $$
   with recursive chain as (
     select *
-    from nods_page 
+    from nods_page
     where id = page_id
 
     union all
 
     select child.*
       from nods_page as child
-      join chain on chain.parent_page_id = child.id 
+      join chain on chain.parent_page_id = child.id
   )
-  select id, parent_page_id, path, meta
-  from chain;
+select id, parent_page_id, path, meta
+from chain;
 $$;

@@ -5,8 +5,10 @@
 --
 -- Data for Name: nods_page; Type: TABLE DATA; Schema: public; Owner: postgres
 --
+--
+INSERT INTO "public"."projects" ("id", "name") VALUES (1, 'local/openai_embeddings');
 
-INSERT INTO "public"."nods_page" ("id", "parent_page_id", "path", "checksum", "meta", "type", "source") VALUES (1, NULL, '/docs/openai_embeddings', 'gBybdse34zVsXwYNsdr/OA+Xx4zCySJNgfku8qFs65c=', NULL, 'markdown', 'guide');
+INSERT INTO "public"."nods_page" ("id", "parent_page_id", "path", "checksum", "meta", "type", "source", "project_id") VALUES (1, NULL, '/docs/openai_embeddings', 'gBybdse34zVsXwYNsdr/OA+Xx4zCySJNgfku8qFs65c=', NULL, 'markdown', 'guide', 1);
 
 
 --
