@@ -18,8 +18,9 @@ const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const config = new Configuration({
   apiKey: openAiKey,
 })
-export const runtime = 'edge'
 const openai = new OpenAIApi(config)
+
+export const runtime = 'edge'
 
 export async function POST(req: Request) {
   if (req.method === 'POST') {
@@ -85,6 +86,7 @@ export async function POST(req: Request) {
           match_threshold: 0.78,
           match_count: 10,
           min_content_length: 50,
+          project_id_input: 1,
         }
       )
 
@@ -111,12 +113,12 @@ export async function POST(req: Request) {
 
       const prompt = codeBlock`
       ${oneLine`
-        You are a very enthusiastic Supabase representative who loves
-        to help people! Given the following sections from the Supabase
+        You are a very enthusiastic developer who loves
+        to help people! Given the following sections from the various
         documentation, answer the question using only that information,
         outputted in markdown format. If you are unsure and the answer
         is not explicitly written in the documentation, say
-        "Sorry, I don't know how to help with that."
+        "Try again"
       `}
 
       Context sections:
