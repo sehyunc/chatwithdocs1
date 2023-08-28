@@ -43,10 +43,14 @@ export async function POST(req: Request) {
         throw new UserError('Missing request data')
       }
 
-      const { prompt: query } = requestData
+      const { prompt: query, projectId } = requestData
 
       if (!query) {
         throw new UserError('Missing query in request data')
+      }
+
+      if (!projectId) {
+        throw new UserError('Missing project ID in request data')
       }
 
       const supabaseClient = createClient(supabaseUrl, supabaseServiceKey)
@@ -86,12 +90,23 @@ export async function POST(req: Request) {
           match_threshold: 0.78,
           match_count: 10,
           min_content_length: 50,
-          project_id_input: 1,
+          project_id_input: projectId,
         }
       )
 
       if (matchError) {
         throw new ApplicationError('Failed to match page sections', matchError)
+      }
+
+      const { data: projectPage } = await supabaseClient
+        .from('projects')
+        .select('name')
+        .filter('id', 'eq', projectId)
+        .limit(1)
+        .maybeSingle()
+
+      if (!projectPage) {
+        throw new ApplicationError('Failed to find project', { projectId })
       }
 
       const tokenizer = new GPT3Tokenizer({ type: 'gpt3' })
@@ -113,12 +128,12 @@ export async function POST(req: Request) {
 
       const prompt = codeBlock`
       ${oneLine`
-        You are a very enthusiastic developer who loves
-        to help people! Given the following sections from the various
-        documentation, answer the question using only that information,
-        outputted in markdown format. If you are unsure and the answer
-        is not explicitly written in the documentation, say
-        "Try again"
+      You are a very enthusiastic ${projectPage.name} representative who loves
+      to help people! Given the following sections from the ${projectPage.name}
+      documentation, answer the question using only that information,
+      outputted in markdown format. If you are unsure and the answer
+      is not explicitly written in the documentation, say
+      "Sorry, I don't know how to help with that."
       `}
 
       Context sections:

@@ -14,12 +14,13 @@ import { Input } from '@/components/ui/input'
 import { useCompletion } from 'ai/react'
 import { X, Loader, User, Frown, CornerDownLeft, Search, Wand } from 'lucide-react'
 
-export function SearchDialog() {
+export function SearchDialog({ id }: { id: string }) {
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState<string>('')
 
   const { complete, completion, isLoading, error } = useCompletion({
     api: '/api/vector-search',
+    body: { projectId: id },
   })
 
   React.useEffect(() => {
