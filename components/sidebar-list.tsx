@@ -1,4 +1,4 @@
-import { getChats, removeChat, shareChat } from '@/app/actions'
+// import { getChats, removeChat, shareChat } from '@/app/actions'
 import { SidebarActions } from '@/components/sidebar-actions'
 import { SidebarItem } from '@/components/sidebar-item'
 
@@ -7,11 +7,11 @@ export interface SidebarListProps {
 }
 
 export async function SidebarList({ userId }: SidebarListProps) {
-  const chats = await getChats(userId)
+  // const chats = await getChats(userId)
 
   return (
     <div className="flex-1 overflow-auto">
-      {chats?.length ? (
+      {/* {chats?.length ? (
         <div className="space-y-2 px-2">
           {chats.map(
             (chat) =>
@@ -26,7 +26,7 @@ export async function SidebarList({ userId }: SidebarListProps) {
         <div className="p-8 text-center">
           <p className="text-sm text-muted-foreground">No chat history</p>
         </div>
-      )}
+      )} */}
     </div>
   )
 }

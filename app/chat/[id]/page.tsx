@@ -1,4 +1,5 @@
 import { type Metadata } from 'next'
+import { getSession } from '@/app/supabase-server'
 import { notFound, redirect } from 'next/navigation'
 
 // import { auth } from '@/auth'
@@ -15,11 +16,11 @@ export interface ChatPageProps {
 }
 
 export async function generateMetadata({ params }: ChatPageProps): Promise<Metadata> {
-  // const session = await auth()
+  const session = await getSession()
 
-  // if (!session?.user) {
-  //   return {}
-  // }
+  if (!session?.user) {
+    return {}
+  }
 
   // const chat = await getChat(params.id, session.user.id)
   return {
@@ -39,5 +40,5 @@ export default async function ChatPage({ params }: ChatPageProps) {
   // if (chat?.userId !== session?.user?.id) {
   //   notFound()
   // }
-  // return <Chat id={chat.id} initialMessages={chat.messages} />
+  return <Chat id={'test'} projectId={params.id} />
 }

@@ -25,18 +25,23 @@ const IS_PREVIEW = process.env.VERCEL_ENV === 'preview'
 export interface ChatProps extends React.ComponentProps<'div'> {
   initialMessages?: Message[]
   id?: string
+  projectId: string
 }
 
-export function Chat({ id, initialMessages, className }: ChatProps) {
+export function Chat({ id, initialMessages, className, projectId }: ChatProps) {
   const [previewToken, setPreviewToken] = useLocalStorage<string | null>('ai-token', null)
   const [previewTokenDialog, setPreviewTokenDialog] = useState(IS_PREVIEW)
   const [previewTokenInput, setPreviewTokenInput] = useState(previewToken ?? '')
+  const [prompt, setPrompt] = useState('')
   const { messages, append, reload, stop, isLoading, input, setInput } = useChat({
+    api: '/api/vector-search',
     initialMessages,
     id,
     body: {
       id,
       previewToken,
+      projectId,
+      prompt,
     },
     onResponse(response) {
       if (response.status === 401) {
@@ -64,7 +69,10 @@ export function Chat({ id, initialMessages, className }: ChatProps) {
         reload={reload}
         messages={messages}
         input={input}
-        setInput={setInput}
+        setInput={(e) => {
+          setInput(e)
+          setPrompt(e)
+        }}
       />
 
       <Dialog open={previewTokenDialog} onOpenChange={setPreviewTokenDialog}>
